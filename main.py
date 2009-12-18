@@ -30,8 +30,9 @@ from extractlinks import LinkExtractor
 class MainHandler(webapp.RequestHandler):
   
   def render_json(self, obj):
+    self.response.headers["Content-Type"] = 'text/javascript'
     if self.request.get("callback"):
-      self.response.out.write(self.request.get("callback") + "(" + simplejson.dumps(obj) + ");")
+      self.response.out.write(self.request.get("callback") + "(" + simplejson.dumps(obj) + ")")
     else:
       self.response.out.write(simplejson.dumps(obj))
     
