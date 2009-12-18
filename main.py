@@ -28,16 +28,22 @@ import extractlinks
 from extractlinks import LinkExtractor 
 
 class MainHandler(webapp.RequestHandler):
-
+  
+  def render_json(self, obj):
+    if self.request.get("callback"):
+      self.response.out.write(self.request.get("callback") + "(" + simplejson.dumps(obj) + ");")
+    else:
+      self.response.out.write(simplejson.dumps(obj))
+    
   def get(self):
     if self.request.get("url"):
       try:
         result = urlfetch.fetch(url=self.request.get("url"), deadline=10)
         parser = LinkExtractor()
         parser.feed(result.content)
-        self.response.out.write(simplejson.dumps(parser.links))
+        self.render_json(parser.links)
       except:
-        self.response.out.write(simplejson.dumps([]))
+        self.render_json([])
           
     else:
       self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
