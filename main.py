@@ -52,7 +52,7 @@ class MainHandler(webapp.RequestHandler):
           parser = LinkExtractor()
           parser.set_base_url(site_url)
           parser.feed(result.content)
-          feeds  = list(set(parser.links))
+          feeds  = parser.links
           if not memcache.add(site_url, feeds, 604800):
             logging.error("Memcache set failed.")
             
