@@ -14,9 +14,10 @@ class LinkExtractor(SGMLParser):
     def make_absolute_and_add(self, dict_feed=None):
         p = urlparse(dict_feed['href'])
         if p.scheme != "":
-            self.links.append(dict_feed['href'])
+            self.links.append(dict_feed)
         else:
-            self.links.append(urljoin(self.base_url, dict_feed['href']))
+            dict_feed['href'] = urljoin(self.base_url, dict_feed['href'])
+            self.links.append(dict_feed)
         
     def reset(self):  
         SGMLParser.reset(self)
