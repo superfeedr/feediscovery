@@ -47,7 +47,7 @@ class MainHandler(webapp.RequestHandler):
         # good
         self.render_json(feeds)
       else:
-        # try:
+        try:
           result = urlfetch.fetch(url=site_url, deadline=10)
           parser = LinkExtractor()
           parser.set_base_url(site_url)
@@ -57,8 +57,8 @@ class MainHandler(webapp.RequestHandler):
             logging.error("Memcache set failed.")
             
           self.render_json(feeds)
-        # except:
-        #   self.render_json([])
+        except:
+          self.render_json([])
           
     else:
       self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
