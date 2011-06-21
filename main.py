@@ -16,11 +16,14 @@
 #
 
 import os
+import logging
 
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.api import urlfetch
 from google.appengine.ext.webapp import template
+
+from google.appengine.api import memcache
 
 from django.utils import simplejson
 
@@ -37,14 +40,25 @@ class MainHandler(webapp.RequestHandler):
       self.response.out.write(simplejson.dumps(obj))
     
   def get(self):
-    if self.request.get("url"):
-      try:
-        result = urlfetch.fetch(url=self.request.get("url"), deadline=10)
-        parser = LinkExtractor()
-        parser.feed(result.content)
-        self.render_json(parser.links)
-      except:
-        self.render_json([])
+    site_url = self.request.get("url")
+    if site_url:
+      feeds = memcache.get(site_url)
+      if feeds is not None:
+        # good
+        self.render_json(feeds)
+      else:
+        # try:
+          result = urlfetch.fetch(url=site_url, deadline=10)
+          parser = LinkExtractor()
+          parser.set_base_url(site_url)
+          parser.feed(result.content)
+          feeds  = list(set(parser.links))
+          if not memcache.add(site_url, feeds, 604800):
+            logging.error("Memcache set failed.")
+            
+          self.render_json(feeds)
+        # except:
+        #   self.render_json([])
           
     else:
       self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
