@@ -29,6 +29,8 @@ from django.utils import simplejson
 
 import extractlinks
 from extractlinks import LinkExtractor 
+import feedparser
+import re
 
 class MainHandler(webapp.RequestHandler):
   
@@ -53,9 +55,17 @@ class MainHandler(webapp.RequestHandler):
           parser.set_base_url(site_url)
           parser.feed(result.content)
           feeds  = parser.links
+          if not feeds:
+              # Let's check if by any chance this is actually not a feed?
+              data = feedparser.parse(result.content)
+              mimeType = "application/atom+xml"
+              href = site_url
+              if re.match("atom", data.version):
+                  mimeType = "application/atom+xml"
+              feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
+              
           if not memcache.add(site_url, feeds, 604800):
             logging.error("Memcache set failed.")
-            
           self.render_json(feeds)
         except:
           self.render_json([])
