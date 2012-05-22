@@ -43,18 +43,26 @@ class MainHandler(webapp.RequestHandler):
     
   def get(self):
     site_url = self.request.get("url")
+    force = self.request.get("force")
+    feeds = [] # default value
     if site_url:
       feeds = memcache.get(site_url)
-      if feeds is not None:
+      if feeds is not None and not force:
         # good
+        logging.debug("Memcache hit.")
         self.render_json(feeds)
       else:
+        logging.debug("Memcache miss.")
         try:
           result = urlfetch.fetch(url=site_url, deadline=10)
           parser = LinkExtractor()
           parser.set_base_url(site_url)
           parser.feed(result.content)
-          feeds  = parser.links
+          if parser.links:
+            feeds = parser.links
+          else:
+            feeds = []
+            
           if not feeds:
               # Let's check if by any chance this is actually not a feed?
               data = feedparser.parse(result.content)
@@ -64,11 +72,15 @@ class MainHandler(webapp.RequestHandler):
                   mimeType = "application/atom+xml"
               feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
               
-          if not memcache.add(site_url, feeds, 604800):
-            logging.error("Memcache set failed.")
-          self.render_json(feeds)
         except:
-          self.render_json([])
+          feeds = []
+        
+        if not memcache.set(site_url, feeds, 86400):
+          logging.error("Memcache set failed.")
+        else: 
+          logging.debug("Memcache set.")
+        self.render_json(feeds)
+        
           
     else:
       self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
