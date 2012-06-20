@@ -31,6 +31,7 @@ import extractlinks
 from extractlinks import LinkExtractor 
 import feedparser
 import re
+import urlparse
 
 class MainHandler(webapp.RequestHandler):
   
@@ -42,7 +43,8 @@ class MainHandler(webapp.RequestHandler):
       self.response.out.write(simplejson.dumps(obj))
     
   def get(self):
-    site_url = self.request.get("url")
+    # We need to clean up the url first and remove any fragment
+    site_url = urlparse.urldefrag(self.request.get("url"))[0]
     force = self.request.get("force")
     feeds = [] # default value
     if site_url:
