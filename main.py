@@ -28,20 +28,20 @@ from google.appengine.api import memcache
 from django.utils import simplejson
 
 import extractlinks
-from extractlinks import LinkExtractor 
+from extractlinks import LinkExtractor
 import feedparser
 import re
 import urlparse
 
 class MainHandler(webapp.RequestHandler):
-  
+
   def render_json(self, obj):
     self.response.headers["Content-Type"] = 'text/javascript'
     if self.request.get("callback"):
       self.response.out.write(self.request.get("callback") + "(" + simplejson.dumps(obj) + ")")
     else:
       self.response.out.write(simplejson.dumps(obj))
-    
+
   def get(self):
     # We need to clean up the url first and remove any fragment
     site_url = urlparse.urldefrag(self.request.get("url"))[0]
@@ -64,7 +64,7 @@ class MainHandler(webapp.RequestHandler):
             feeds = parser.links
           else:
             feeds = []
-            
+
           if not feeds:
               # Let's check if by any chance this is actually not a feed?
               data = feedparser.parse(result.content)
@@ -73,20 +73,19 @@ class MainHandler(webapp.RequestHandler):
               if re.match("atom", data.version):
                   mimeType = "application/atom+xml"
               feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
-              
+
         except:
           feeds = []
-        
+
         if not memcache.set(site_url, feeds, 86400):
           logging.error("Memcache set failed.")
-        else: 
+        else:
           logging.debug("Memcache set.")
         self.render_json(feeds)
-        
-          
+
     else:
       self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
-      
+
 def main():
   application = webapp.WSGIApplication([('/', MainHandler)], debug=True)
   util.run_wsgi_app(application)
