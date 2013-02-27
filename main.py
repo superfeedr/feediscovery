@@ -66,13 +66,19 @@ class MainHandler(webapp.RequestHandler):
             feeds = []
 
           if not feeds:
-              # Let's check if by any chance this is actually not a feed?
-              data = feedparser.parse(result.content)
-              mimeType = "application/atom+xml"
-              href = site_url
-              if re.match("atom", data.version):
-                  mimeType = "application/atom+xml"
-              feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
+            # Let's check if by any chance this is actually not a feed?
+            data = feedparser.parse(result.content)
+            links = data.feed.links
+            mimeType = "application/atom+xml"
+            href = site_url
+
+            # use the rel="self" if it's there
+            feed_self = next((l for l in links if l['rel'] == 'self'), None)
+            if feed_self is not None:
+              href = feed_self['href']
+              mimeType = feed_self['type']
+              
+            feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
 
         except:
           feeds = []
