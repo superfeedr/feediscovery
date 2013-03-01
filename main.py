@@ -17,15 +17,12 @@
 
 import os
 import logging
-
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
-from google.appengine.api import urlfetch
-from google.appengine.ext.webapp import template
+import webapp2
+import json
 
 from google.appengine.api import memcache
-
-from django.utils import simplejson
+from google.appengine.api import urlfetch
+from google.appengine.ext.webapp import template
 
 import extractlinks
 from extractlinks import LinkExtractor
@@ -33,14 +30,14 @@ import feedparser
 import re
 import urlparse
 
-class MainHandler(webapp.RequestHandler):
+class MainHandler(webapp2.RequestHandler):
 
   def render_json(self, obj):
     self.response.headers["Content-Type"] = 'text/javascript'
     if self.request.get("callback"):
-      self.response.out.write(self.request.get("callback") + "(" + simplejson.dumps(obj) + ")")
+      self.response.write(self.request.get("callback") + "(" + json.dumps(obj) + ")")
     else:
-      self.response.out.write(simplejson.dumps(obj))
+      self.response.write(json.dumps(obj))
 
   def get(self):
     # We need to clean up the url first and remove any fragment
@@ -84,12 +81,6 @@ class MainHandler(webapp.RequestHandler):
         self.render_json(feeds)
 
     else:
-      self.response.out.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
+      self.response.write(template.render(os.path.join(os.path.dirname(__file__), 'templates', "index.html"), {}))
 
-def main():
-  application = webapp.WSGIApplication([('/', MainHandler)], debug=True)
-  util.run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()
+app = webapp2.WSGIApplication([('/', MainHandler)], debug=True)
