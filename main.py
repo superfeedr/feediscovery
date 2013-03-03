@@ -39,13 +39,23 @@ class MainHandler(webapp2.RequestHandler):
     else:
       self.response.write(json.dumps(obj))
 
+  # Correct feed urls with rel="self" and add hubs
+  def extend_feed(self, feed, links):
+    feed_self = next((l for l in links if l['rel'] == 'self'), None)
+    if feed_self is not None:
+      feed['href'] = feed_self['href']
+      feed['type'] = feed_self['type']
+    feed['hubs'] = [l for l in links if l['rel'] == 'hub']
+
   def get(self):
     # We need to clean up the url first and remove any fragment
     site_url = urlparse.urldefrag(self.request.get("url"))[0]
-    force = self.request.get("force")
+    force = (self.request.get("force").lower()) in ['true', '1']
+    extend = (self.request.get("extend").lower()) in ['true', '1']
     feeds = [] # default value
+
     if site_url:
-      feeds = memcache.get(site_url)
+      feeds = memcache.get(site_url + "." + str(extend))
       if feeds is not None and not force:
         # good
         logging.debug("Memcache hit.")
@@ -65,22 +75,23 @@ class MainHandler(webapp2.RequestHandler):
           if not feeds:
             # Let's check if by any chance this is actually not a feed?
             data = feedparser.parse(result.content)
-            links = data.feed.links
-            mimeType = "application/atom+xml"
-            href = site_url
-
-            # use the rel="self" if it's there
-            feed_self = next((l for l in links if l['rel'] == 'self'), None)
-            if feed_self is not None:
-              href = feed_self['href']
-              mimeType = feed_self['type']
-              
-            feeds = [{'title': data.feed.title, 'rel': 'self', 'type': mimeType, 'href': href}]
+            if data.bozo == 0:
+              feed = {'title': data.feed.get('title', ''), 'rel': 'self', 'type': 'application/atom+xml', 'href': site_url}
+              links = data.feed.get('links', [])
+              if extend:
+                self.extend_feed(feed, links)
+              feeds = [feed]
+          else:
+            if extend:
+              for f in feeds:
+                data = feedparser.parse(f['href'])
+                links = data.feed.get('links', [])
+                self.extend_feed(f, links)
 
         except:
           feeds = []
 
-        if not memcache.set(site_url, feeds, 86400):
+        if not memcache.set(site_url + "." + str(extend), feeds, 86400):
           logging.error("Memcache set failed.")
         else:
           logging.debug("Memcache set.")
